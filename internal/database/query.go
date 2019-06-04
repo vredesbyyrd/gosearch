@@ -44,7 +44,8 @@ func (l byLength) Result(index int) string {
 
 func queryIndex(req request.Request) {
 	defer close(req.ResponseChannel)
-	log.Println("querying", req.Query)
+	log.Printf("req = %+v\n", req)
+	log.Printf("string(req.Query) = %+v\n", string(req.Query))
 	prefix := trie.Prefix(req.Query)
 
 	var results resulter
@@ -63,6 +64,16 @@ func queryIndex(req request.Request) {
 		})
 
 		results = byLength(tempResults)
+	case request.PathSearch:
+		tempResults := []sortResult{}
+		fileTree.VisitFuzzy([]byte(prefix), req.Settings.CaseInsensitive,
+			func(prefix trie.Prefix, item trie.Item, skipped int) error {
+				tempResults = append(tempResults,
+					sortResult{string(prefix), skipped})
+				return nil
+			})
+
+		results = bySkipped(tempResults)
 	case request.SubStringSearch:
 		tempResults := byLength{}
 		indexTrie.VisitSubstring(prefix, req.Settings.CaseInsensitive,
